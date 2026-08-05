@@ -17,6 +17,21 @@ helm repo add localstack https://helm.localstack.cloud
 helm repo update
 ```
 
+### LocalStack authentication token
+
+Recent LocalStack versions **require an auth token to start the container**, even for
+community features such as S3. Without it the LocalStack pod exits with
+`exit code 55 — License activation failed`.
+
+1. Create a free account and copy your token from https://app.localstack.cloud
+   (the free *Hobby* plan is enough; *Students* / *OSS* options also exist).
+2. Export the token in the shell **before** running Skaffold — it is injected into the
+   LocalStack release via `setValueTemplates`, so it is never committed to the repo:
+
+```bash
+export LOCALSTACK_AUTH_TOKEN="ls-xxxxxxxx"
+```
+
 ## Deployment Profiles
 
 ### Standard Installation
@@ -85,13 +100,56 @@ Additional features:
 
 ### macOS / ARM Processor Support
 
-For Apple Silicon (M1/M2) or other ARM-based systems:
+For Apple Silicon or other ARM-based systems:
 
 ```bash
 skaffold dev -p macos
 ```
 
 This profile configures `hostpath` storage class compatible with Docker Desktop on macOS.
+
+Keep **Rosetta enabled** in Docker Desktop (Settings → General → *Apple Virtualization
+framework* + *Use Rosetta for x86_64/amd64 emulation*). The rest of the stack ships as
+amd64 and relies on Rosetta.
+
+#### Temporary: build the code-server image natively in arm64
+
+> ⚠️ **Temporary workaround.** The `eoap-coder` image is currently published for amd64
+> only. Under Rosetta emulation the Jupyter Python kernel (`ipykernel`) **deadlocks on
+> startup**, which makes notebooks unusable (the terminal still works fine). Running the
+> code-server pod as a **native arm64** image avoids the emulation entirely.
+>
+> Once the multi-arch image is published upstream (PR pending on
+> [`eoap/dev-platform-eoap`](https://github.com/eoap/dev-platform-eoap)), this whole
+> section can be ignored: point `coder.coderImage` back to
+> `ghcr.io/eoap/dev-platform-eoap/eoap-coder:0.1.0` and Kubernetes will pull the arm64
+> variant natively.
+
+Build the arm64 image locally (the `Dockerfile.coder` is already multi-arch aware) and
+load it into Docker Desktop's image store:
+
+```bash
+cd ../container/coder
+docker buildx build --builder desktop-linux --platform linux/arm64 --load \
+  -t eoap-coder:0.1.0-arm64 -f Dockerfile.coder .
+cd -
+```
+
+Update the `skaffold.yaml` to reference `eoap-coder:0.1.0-arm64` in place of
+the default `ghcr.io/eoap/dev-platform-eoap/eoap-coder:0.1.0`.
+
+Then deploy as usual (don't forget the LocalStack token above):
+
+```bash
+export LOCALSTACK_AUTH_TOKEN="ls-xxxxxxxx"
+skaffold dev -p macos --platform linux/amd64 --enable-platform-node-affinity=true
+```
+
+> If notebooks show Python import errors after switching architecture, the persistent
+> workspace still holds a venv built for the previous arch. Recreate it:
+> `kubectl -n eoap-zoo-project delete pvc code-server-pvc`, then redeploy so `init.sh`
+> rebuilds `/workspace/.venv` in arm64.
+
 
 ## Cleanup
 

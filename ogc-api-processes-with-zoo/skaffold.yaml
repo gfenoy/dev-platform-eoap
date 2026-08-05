@@ -13,7 +13,7 @@ deploy:
         remoteChart: zoo-project/zoo-project-dru
         namespace: eoap-zoo-project
         createNamespace: true
-        version: 0.8.2
+        version: 0.10.4
         valuesFiles: 
         - values.yaml
         setValues:
@@ -44,10 +44,12 @@ deploy:
         setValues:
           coder.workspace: ogc-api-processes-with-zoo
           coder.workspaceStorage: 10Gi
-          coderResources.limits.cpu: '2'
+          # Image arm64 native construite localement (docker buildx --load) pour que
+          # le kernel Jupyter tourne sans emulation Rosetta (sinon deadlock ipykernel).
+          coder.coderImage: eoap-coder:0.1.0
           coderResources.limits.memory: '6442450944'
-          coderResources.requests.cpu: '1'
           coderResources.requests.memory: '4294967296'
+          coderResources.requests.cpu: '1'
           calrissian.enabled: true
 
         setFiles: {
@@ -61,6 +63,9 @@ deploy:
         createNamespace: true
         setValues:
           service.type: ClusterIP
+          extraEnvVars[0].name: LOCALSTACK_AUTH_TOKEN
+        setValueTemplates:
+          extraEnvVars[0].value: "{{.LOCALSTACK_AUTH_TOKEN}}"
 
 profiles:
 
