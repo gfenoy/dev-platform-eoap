@@ -44,8 +44,6 @@ deploy:
         setValues:
           coder.workspace: ogc-api-processes-with-zoo
           coder.workspaceStorage: 10Gi
-          # Image arm64 native construite localement (docker buildx --load) pour que
-          # le kernel Jupyter tourne sans emulation Rosetta (sinon deadlock ipykernel).
           coder.coderImage: eoap-coder:0.1.0
           coderResources.limits.memory: '6442450944'
           coderResources.requests.memory: '4294967296'
