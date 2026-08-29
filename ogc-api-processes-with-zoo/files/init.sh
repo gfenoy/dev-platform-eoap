@@ -1,6 +1,6 @@
 cd /workspace
 
-    git clone https://github.com/eoap/ogc-api-processes-with-zoo.git
+    git clone https://github.com/gfenoy/ogc-api-processes-with-zoo.git
    
     code-server --install-extension ms-python.python --install-extension ms-toolsai.jupyter
 
